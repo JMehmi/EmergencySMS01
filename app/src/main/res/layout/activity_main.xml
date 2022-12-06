@@ -8,15 +8,18 @@
     tools:context=".MainActivity">
 
 
-    <View
+    <Button
+        android:id="@+id/popUp"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_alignParentEnd="true"
-        android:layout_margin="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
         android:background="@drawable/ic_baseline_menu_24"
         android:clickable="true"
-        android:focusable="true"
-        android:onClick="Menu" />
+        android:focusable="true" />
 
 
     <RelativeLayout
@@ -29,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:text="SOS to\n"
+            android:text="SOS to \n"
             android:textAlignment="center"
             android:textColor="@color/white"
             android:textSize="18sp" />
