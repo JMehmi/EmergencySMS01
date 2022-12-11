@@ -1,5 +1,6 @@
 package com.example.emergencysms
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -14,20 +15,22 @@ import com.example.emergencysms.databinding.ActivityRegisterNumberBinding
 class RegisterNumber : AppCompatActivity() {
     private lateinit var binding: ActivityRegisterNumberBinding
 
+    @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRegisterNumberBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        val sharedP = getSharedPreferences("sharedPref", MODE_PRIVATE)
-        val editor = sharedP.edit()
+        var sharedP = getSharedPreferences("sharedPref", MODE_PRIVATE)
+        var num=sharedP.getString("Enum","0")
+
 
         binding.saveNumber.setOnClickListener() {
                 val phnNumber= binding.numberEdit.text.toString()
                 if(phnNumber.isNotEmpty() && phnNumber.length==12) {
-                   // editor.putString("ENUM",phnNumber)
-                    //editor.commit()
+                    var editor: SharedPreferences.Editor = sharedP.edit()
+                        editor.putString("Enum",phnNumber)
+                        editor.apply()
                     val intent = Intent (this, MainActivity::class.java)
-                        intent.putExtra("phnNumber",phnNumber)
                     startActivity(intent)
                 }else{
                     Toast.makeText(this, "Enter phone number with country code", Toast.LENGTH_SHORT).show()

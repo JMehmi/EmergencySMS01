@@ -1,91 +1,77 @@
 package com.example.emergencysms
 
-import android.app.Activity
-import android.content.ContentProviderClient
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
-import android.location.LocationProvider
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.telephony.SmsManager
-import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.PopupMenu
-import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.getSystemService
-import androidx.core.location.LocationManagerCompat.isLocationEnabled
-import androidx.lifecycle.DEFAULT_ARGS_KEY
+import androidx.core.app.ActivityCompat.requestPermissions
+import androidx.core.content.ContextCompat
 import com.example.emergencysms.databinding.ActivityMainBinding
-import com.example.emergencysms.databinding.ActivityRegisterNumberBinding
+import com.google.android.material.snackbar.Snackbar
 import java.lang.Math.sqrt
-import java.security.spec.PSSParameterSpec.DEFAULT
 import java.util.*
-import java.util.jar.Manifest
+
 
 class MainActivity : AppCompatActivity() {
-    private var sensorManager: SensorManager? = null
-    private var acceleration = 0f
-    private var currentAcceleration = 0f
-    private var lastAcceleration = 0f
     private lateinit var binding: ActivityMainBinding
     private lateinit var phnNumber: String
-    private var mex : String="SOS help me I'm here"
+    private lateinit var lm: LocationManager
+    private var latitude: Double? =null
+    private var longitude: Double? =null
+    private lateinit var _linear_layout: LinearLayout
+
 
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        //ACCELEROMETER DATA
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        Objects.requireNonNull(sensorManager)!!.registerListener(
-            sensorListener, sensorManager!!
-                .getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL
-        )
-        acceleration = 10f
-        currentAcceleration = SensorManager.GRAVITY_EARTH
-        lastAcceleration = SensorManager.GRAVITY_EARTH
-
 
         binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        //phnNumber= getSharedPreferences("ENUM", MODE_PRIVATE).getString("ENUM","0").toString()
 
-        phnNumber= intent.getStringExtra("phnNumber").toString()
-        if(phnNumber.equals("null")){
-            val intent = Intent (this, RegisterNumber::class.java)
+
+
+        //LOCATION
+        lm = getSystemService(LOCATION_SERVICE) as LocationManager
+
+        phnNumber =
+            getSharedPreferences("sharedPref", MODE_PRIVATE).getString("Enum", "0").toString()
+
+        if (phnNumber.equals("0")) {
+            val intent = Intent(this, RegisterNumber::class.java)
             startActivity(intent)
-        }
-        else{
-            Toast.makeText(this, phnNumber, Toast.LENGTH_SHORT).show()
-            //binding.textNum.setText("SOS to\n"+phnNumber)
+        } else {
+            binding.textNum.setText("SOS to\n $phnNumber")
         }
 
         val popupMbt: Button = binding.popUp
 
-        popupMbt.setOnClickListener(){
-            val popmenu: PopupMenu = PopupMenu(this,popupMbt)
-            popmenu.menuInflater.inflate(R.menu.popup,popmenu.menu)
-
-
+        popupMbt.setOnClickListener() {
+            val popmenu: PopupMenu = PopupMenu(this, popupMbt)
+            popmenu.menuInflater.inflate(R.menu.popup, popmenu.menu)
             popmenu.setOnMenuItemClickListener(PopupMenu.OnMenuItemClickListener { item ->
                 when (item.itemId) {
-                    R.id.chngNumber->
+                    R.id.chngNumber ->
                         switchAct()
                 }
                 true
@@ -93,9 +79,19 @@ class MainActivity : AppCompatActivity() {
             popmenu.show()
         }
 
-        binding.start.setOnClickListener(){
-            Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show()
-            sendSMS(mex,phnNumber)
+        binding.apply {
+
+
+            start.setOnClickListener {
+                Toast.makeText(applicationContext,"Service started",Toast.LENGTH_SHORT).show()
+                startService(Intent(this@MainActivity, EmService::class.java))
+            }
+
+            stop.setOnClickListener() {
+
+                stopService(Intent(this@MainActivity, EmService::class.java))
+
+            }
         }
 
     }
@@ -104,25 +100,6 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent (this, RegisterNumber::class.java)
         startActivity(intent)
     }
-
-
-    private val sensorListener: SensorEventListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent) {
-            val x = event.values[0]
-            val y = event.values[1]
-            val z = event.values[2]
-            lastAcceleration = currentAcceleration
-            currentAcceleration = sqrt((x * x + y * y + z * z).toDouble()).toFloat()
-            val delta: Float = currentAcceleration - lastAcceleration
-            acceleration = acceleration * 0.9f + delta
-            if (acceleration > 12) {
-
-                Toast.makeText(this@MainActivity, "Shake Detected", Toast.LENGTH_SHORT).show()
-            }
-        }
-        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
-    }
-
 
     private fun sendSMS(s: String, phnNumber: String) {
 
@@ -135,16 +112,8 @@ class MainActivity : AppCompatActivity() {
         smsManager.sendTextMessage("00$phnNumber",null,"SOS",null,null)
     }
 
-    override fun onResume() {
-        sensorManager?.registerListener(sensorListener, sensorManager!!.getDefaultSensor(
-            Sensor .TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL
-        )
-        super.onResume()
-    }
-    override fun onPause() {
-        sensorManager!!.unregisterListener(sensorListener)
-        super.onPause()
-    }
 
 
 }
+
+
