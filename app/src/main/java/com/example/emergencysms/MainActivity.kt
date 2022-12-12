@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -26,6 +27,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.content.ContextCompat
 import com.example.emergencysms.databinding.ActivityMainBinding
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.snackbar.Snackbar
 import java.lang.Math.sqrt
 import java.util.*
@@ -35,9 +38,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var phnNumber: String
     private lateinit var lm: LocationManager
-    private var latitude: Double? =null
-    private var longitude: Double? =null
+    private var latitude: Double = 0.0
+    private var longitude: Double = 0.0
     private lateinit var _linear_layout: LinearLayout
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var sharedP : SharedPreferences
+
 
 
 
@@ -49,17 +55,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
 
-
+        sharedP = getSharedPreferences("sharedPref", MODE_PRIVATE)
+        var lat=sharedP.getString("lat","1")
+        var long=sharedP.getString("long","2")
 
         //LOCATION
-        lm = getSystemService(LOCATION_SERVICE) as LocationManager
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
         phnNumber =
             getSharedPreferences("sharedPref", MODE_PRIVATE).getString("Enum", "0").toString()
 
         if (phnNumber.equals("0")) {
-            val intent = Intent(this, RegisterNumber::class.java)
-            startActivity(intent)
+            switchAct()
         } else {
             binding.textNum.setText("SOS to\n $phnNumber")
         }
@@ -84,6 +91,8 @@ class MainActivity : AppCompatActivity() {
 
             start.setOnClickListener {
                 Toast.makeText(applicationContext,"Service started",Toast.LENGTH_SHORT).show()
+                getLocation()
+                Toast.makeText(applicationContext,"$latitude - $longitude ",Toast.LENGTH_SHORT).show()
                 startService(Intent(this@MainActivity, EmService::class.java))
             }
 
@@ -96,24 +105,34 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun getLocation() {
+      if(ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+          ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),100)
+            return
+        }
+        val location= fusedLocationProviderClient.lastLocation
+        location.addOnSuccessListener {
+            if(it!=null){
+                latitude=it.latitude
+                longitude=it.longitude
+                val lat= latitude.toString()
+                val long=longitude.toString()
+                var editor: SharedPreferences.Editor = sharedP.edit()
+                editor.putString("lat",lat)
+                editor.putString("long",long)
+                editor.apply()
+            }
+        }
+    }
+
     private fun switchAct() {
         val intent = Intent (this, RegisterNumber::class.java)
         startActivity(intent)
     }
 
-    private fun sendSMS(s: String, phnNumber: String) {
-
-        var smsManager: SmsManager =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                applicationContext.getSystemService<SmsManager>(SmsManager::class.java)
-            } else {
-                TODO("VERSION.SDK_INT < M")
-            }
-        smsManager.sendTextMessage("00$phnNumber",null,"SOS",null,null)
-    }
-
-
-
 }
+
 
 
